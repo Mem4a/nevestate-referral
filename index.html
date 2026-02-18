@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Передача реферала</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #fff);
+            --text-color: var(--tg-theme-text-color, #000);
+            --hint-color: var(--tg-theme-hint-color, #999);
+            --button-color: var(--tg-theme-button-color, #2481cc);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            --error-color: #ff3b30;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; 
+            padding: 20px; 
+            box-sizing: border-box; 
+        }
+        h3 { text-align: center; margin-top: 0; margin-bottom: 20px; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; color: var(--hint-color); }
+        
+        input, select, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 12px; 
+            border: 1px solid transparent; 
+            background-color: var(--secondary-bg); 
+            color: var(--text-color); 
+            font-size: 16px; 
+            box-sizing: border-box; 
+            outline: none; 
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--button-color); }
+        textarea { resize: vertical; min-height: 80px; }
+        
+        .loader { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 50vh; 
+            color: var(--hint-color); 
+        }
+        .hidden { display: none !important; }
+        .error-msg { color: var(--error-color); text-align: center; margin-top: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="loader">
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38" stroke="#2481cc">
+            <g fill="none" fill-rule="evenodd">
+                <g transform="translate(1 1)" stroke-width="2">
+                    <circle stroke-opacity=".5" cx="18" cy="18" r="18"/>
+                    <path d="M36 18c0-9.94-8.06-18-18-18">
+                        <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="1s" repeatCount="indefinite"/>
+                    </path>
+                </g>
+            </g>
+        </svg>
+        <p style="margin-top: 15px;">Загрузка списка...</p>
+    </div>
+
+    <div id="form" class="hidden">
+        <h3>Новый лид</h3>
+
+        <div class="form-group">
+            <label>Страна интереса</label>
+            <select id="countrySelect" onchange="filterBrokers()">
+                <option value="" selected>Загрузка...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Кому передать (Брокер)</label>
+            <select id="brokerSelect">
+                <option value="" disabled selected>Сначала выберите страну...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Имя клиента</label>
+            <input type="text" id="clientName" placeholder="Иван Иванов">
+        </div>
+
+        <div class="form-group">
+            <label>Телефон клиента</label>
+            <input type="tel" id="clientPhone" placeholder="+7 999 000-00-00">
+        </div>
+
+        <div class="form-group">
+            <label>Комментарий</label>
+            <textarea id="comment" placeholder="Бюджет, сроки, пожелания..."></textarea>
+        </div>
+    </div>
+    
+    <div id="errorMsg" class="error-msg hidden"></div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // --- НАСТРОЙКИ ---
+        // Ссылка для получения списка (GET)
+        const GET_URL = 'https://n8n.nevn8n8amocrm.online/webhook/72ab1905-055c-4452-ae15-16245b46693e';
+        // Ссылка для отправки формы (POST)
+        const POST_URL = 'https://n8n.nevn8n8amocrm.online/webhook/f2cd4077-afb6-428e-adc0-4357783010a7';
+
+        let allBrokers = [];
+        let allCountries = [];
+
+        // 1. Инициализация (Загрузка данных)
+        async function init() {
+            try {
+                const response = await fetch(GET_URL, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) throw new Error("Ошибка сети при загрузке");
+                
+                const data = await response.json();
+                
+                // Проверяем формат (n8n должен вернуть { brokers: [], countries: [] })
+                if (!data.brokers || !data.countries) {
+                    throw new Error("Неверный формат данных от n8n");
+                }
+
+                allBrokers = data.brokers;
+                allCountries = data.countries;
+
+                renderForm();
+                
+                // Показываем форму
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('form').classList.remove('hidden');
+                
+                // Включаем кнопку
+                tg.MainButton.setText("ОТПРАВИТЬ ЛИД");
+                tg.MainButton.show();
+
+            } catch (error) {
+                document.getElementById('loader').classList.add('hidden');
+                showError("Не удалось загрузить данные. " + error.message);
+            }
+        }
+
+        // 2. Отрисовка селектов
+        function renderForm() {
+            const cSelect = document.getElementById('countrySelect');
+            cSelect.innerHTML = '<option value="" selected>Любая страна</option>';
+            
+            allCountries.forEach(country => {
+                const opt = document.createElement('option');
+                opt.value = country;
+                opt.textContent = country;
+                cSelect.appendChild(opt);
+            });
+
+            // Сразу запускаем фильтрацию, чтобы заполнить брокеров
+            filterBrokers();
+        }
+
+        // 3. Фильтрация списка брокеров
+        function filterBrokers() {
+            const selectedCountry = document.getElementById('countrySelect').value;
+            const bSelect = document.getElementById('brokerSelect');
+            bSelect.innerHTML = '<option value="" disabled selected>Выберите брокера</option>';
+
+            // Если страна выбрана, показываем только тех, кто ей занимается. Иначе всех.
+            const filtered = selectedCountry 
+                ? allBrokers.filter(b => b.countries.includes(selectedCountry))
+                : allBrokers;
+
+            filtered.forEach(broker => {
+                const opt = document.createElement('option');
+                opt.value = broker.id; // ID пользователя AmoCRM
+                opt.textContent = broker.name;
+                bSelect.appendChild(opt);
+            });
+
+            if (filtered.length === 0) {
+                const opt = document.createElement('option');
+                opt.disabled = true;
+                opt.textContent = "Нет брокеров по этой стране";
+                bSelect.appendChild(opt);
+            }
+        }
+
+        // 4. Показ ошибки
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        // 5. Обработка нажатия кнопки
+        tg.MainButton.onClick(async () => {
+            const brokerId = document.getElementById('brokerSelect').value;
+            const clientName = document.getElementById('clientName').value;
+            const clientPhone = document.getElementById('clientPhone').value;
+            const country = document.getElementById('countrySelect').value;
+
+            // Валидация
+            if (!brokerId || !clientName || !clientPhone) {
+                tg.showAlert("Пожалуйста, заполните Брокера, Имя и Телефон.");
+                return;
+            }
+
+            tg.MainButton.showProgress();
+
+            // Данные для отправки
+            const payload = {
+                sender_tg_id: tg.initDataUnsafe.user?.id,
+                sender_username: tg.initDataUnsafe.user?.username,
+                sender_name: tg.initDataUnsafe.user?.first_name,
+                target_broker_id: brokerId,
+                country: country,
+                client_name: clientName,
+                client_phone: clientPhone,
+                comment: document.getElementById('comment').value
+            };
+
+            try {
+                const response = await fetch(POST_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    tg.MainButton.hideProgress();
+                    tg.showAlert("✅ Лид успешно передан!");
+                    tg.close();
+                } else {
+                    throw new Error("Сервер ответил ошибкой");
+                }
+            } catch (error) {
+                tg.MainButton.hideProgress();
+                tg.showAlert("Ошибка отправки. Проверьте интернет.");
+            }
+        });
+
+        // Запуск приложения
+        init();
+    </script>
+</body>
+</html>
