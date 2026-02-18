@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Nevestate Partner</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css" />
-    
     <style>
         /* --- БАЗОВЫЕ НАСТРОЙКИ --- */
         :root {
@@ -23,7 +21,7 @@
             background-color: var(--bg-color); 
             color: var(--text-color); 
             margin: 0; 
-            padding: 0; /* Убираем отступы body, чтобы фон был полным */
+            padding: 0; 
             box-sizing: border-box; 
             min-height: 100vh;
         }
@@ -43,7 +41,7 @@
         }
         .hidden { display: none !important; }
 
-        /* --- ГЛАВНОЕ МЕНЮ (ЛЕНДИНГ) --- */
+        /* --- ГЛАВНОЕ МЕНЮ --- */
         .menu-screen {
             display: flex;
             flex-direction: column;
@@ -58,7 +56,7 @@
         .logo-area {
             width: 120px;
             height: 120px;
-            background-color: #f5f5f5; /* Плейсхолдер для лого */
+            background-color: #f5f5f5; 
             border-radius: 50%;
             margin-bottom: 20px;
             display: flex;
@@ -67,13 +65,13 @@
             font-size: 40px;
             color: var(--primary-gold);
             border: 2px solid var(--primary-gold);
+            overflow: hidden; /* Чтобы картинка не вылезала */
         }
         
         .logo-img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 50%;
         }
 
         .app-title {
@@ -125,7 +123,7 @@
         }
         .btn-secondary:active { background-color: #f9f9f9; transform: scale(0.98); }
 
-        /* --- ЭКРАН ФОРМЫ (ВАШ ДИЗАЙН) --- */
+        /* --- ЭКРАН ФОРМЫ --- */
         .form-screen {
             padding: 20px;
             padding-top: 20px;
@@ -151,9 +149,9 @@
             color: #000;
         }
 
-        /* Поля ввода (из вашего CSS) */
         .my-form-container input[type="text"], 
         .my-form-container input[type="tel"], 
+        .my-form-container input[type="number"],
         .my-form-container select,
         .my-form-container textarea {
             width: 100%; 
@@ -168,7 +166,7 @@
             box-sizing: border-box; 
             margin-bottom: 12px;
             outline: none;
-            appearance: none; /* Убирает стандартные стили браузера */
+            appearance: none;
         }
 
         .my-form-container textarea {
@@ -190,7 +188,6 @@
             display: block;
         }
 
-        /* Сообщение об ошибке */
         .error-msg {
             color: var(--error-color);
             text-align: center;
@@ -200,7 +197,6 @@
             border-radius: 12px;
         }
 
-        /* Анимации */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
@@ -223,13 +219,14 @@
 
     <div id="mainMenu" class="menu-screen hidden">
         <div class="logo-area">
-            <span>N</span> </div>
+            <span>N</span>
+        </div>
         
         <h1 class="app-title">NEVESTATE PARTNER</h1>
         <p class="app-subtitle">Единое пространство для управления сделками и передачи рефералов.</p>
 
         <button class="menu-btn btn-primary" onclick="goToForm()">
-            + Перелать реферал
+            + Передать реферал
         </button>
         
         <button class="menu-btn btn-secondary" onclick="alert('Раздел в разработке')">
@@ -261,8 +258,11 @@
             <label class="form-label">Телефон клиента</label>
             <input type="tel" id="clientPhone" placeholder="+7 999 000-00-00">
 
+            <label class="form-label">Бюджет ($)</label>
+            <input type="text" id="clientBudget" inputmode="decimal" placeholder="Например: 250 000">
+
             <label class="form-label">Комментарий</label>
-            <textarea id="comment" placeholder="Бюджет, сроки, детали..."></textarea>
+            <textarea id="comment" placeholder="Сроки, пожелания, нюансы..."></textarea>
 
             <div id="errorMsg" class="error-msg hidden"></div>
         </div>
@@ -271,19 +271,17 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        
-        // Цвет хедера подстраиваем под фон
         tg.setHeaderColor('#ffffff'); 
         tg.setBackgroundColor('#ffffff');
 
-        // --- ВЕБХУКИ (ВАШИ) ---
+        // ВАШИ ВЕБХУКИ
         const GET_URL = 'https://n8n.nevn8n8amocrm.online/webhook/72ab1905-055c-4452-ae15-16245b46693e';
         const POST_URL = 'https://n8n.nevn8n8amocrm.online/webhook/f2cd4077-afb6-428e-adc0-4357783010a7';
 
         let allBrokers = [];
         let allCountries = [];
 
-        // 1. Инициализация при старте
+        // Инициализация
         async function init() {
             try {
                 const response = await fetch(GET_URL, {
@@ -303,7 +301,6 @@
 
                 renderSelects();
                 
-                // Данные загружены -> Показываем МЕНЮ
                 document.getElementById('loader').classList.add('hidden');
                 document.getElementById('mainMenu').classList.remove('hidden');
 
@@ -313,7 +310,6 @@
             }
         }
 
-        // 2. Логика отрисовки селектов
         function renderSelects() {
             const cSelect = document.getElementById('countrySelect');
             cSelect.innerHTML = '<option value="" selected>Выберите страну</option>';
@@ -349,44 +345,38 @@
             }
         }
 
-        // 3. НАВИГАЦИЯ
-        
-        // Перейти в форму
+        // Навигация
         function goToForm() {
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('referralForm').classList.remove('hidden');
             
-            // Настраиваем кнопку Telegram "Назад"
             tg.BackButton.show();
             tg.BackButton.onClick(goBackToMenu);
 
-            // Настраиваем Главную Кнопку "Отправить"
             tg.MainButton.setText("ОТПРАВИТЬ ЛИД");
-            tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' }); // Золотой цвет
+            tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' });
             tg.MainButton.show();
         }
 
-        // Вернуться в меню
         function goBackToMenu() {
             document.getElementById('referralForm').classList.add('hidden');
             document.getElementById('mainMenu').classList.remove('hidden');
             
             tg.BackButton.hide();
             tg.MainButton.hide();
-            
-            // Убираем слушатель, чтобы не дублировался
             tg.BackButton.offClick(goBackToMenu);
         }
 
-        // 4. ОТПРАВКА ДАННЫХ (Привязана к MainButton)
+        // Отправка
         tg.MainButton.onClick(async () => {
             const brokerId = document.getElementById('brokerSelect').value;
             const clientName = document.getElementById('clientName').value;
             const clientPhone = document.getElementById('clientPhone').value;
+            const clientBudget = document.getElementById('clientBudget').value; // Новое поле
             const country = document.getElementById('countrySelect').value;
 
             if (!brokerId || !clientName || !clientPhone) {
-                tg.showAlert("Заполните все поля!");
+                tg.showAlert("Заполните основные поля (Имя, Телефон, Брокер)!");
                 return;
             }
 
@@ -400,6 +390,7 @@
                 country: country,
                 client_name: clientName,
                 client_phone: clientPhone,
+                budget: clientBudget, // Отправляем бюджет
                 comment: document.getElementById('comment').value
             };
 
@@ -413,7 +404,6 @@
                 if (response.ok) {
                     tg.MainButton.hideProgress();
                     tg.showAlert("✅ Лид успешно передан!");
-                    // Возвращаемся в меню или закрываем
                     tg.close(); 
                 } else {
                     throw new Error("Ошибка сервера");
@@ -424,7 +414,6 @@
             }
         });
 
-        // Запуск
         init();
     </script>
 </body>
