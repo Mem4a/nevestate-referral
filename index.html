@@ -34,17 +34,19 @@
             align-items: center;
             box-sizing: border-box;
             animation: fadeIn 0.3s ease-in-out;
+            padding-bottom: 100px; /* Отступ для главной кнопки TG */
         }
 
-        /* --- ЭКРАН ЗАГРУЗКИ --- */
-        #loaderScreen { 
+        /* --- ЭКРАН ЗАГРУЗКИ & ДОСТУП ЗАПРЕЩЕН --- */
+        #loaderScreen, #accessDeniedScreen { 
             justify-content: center; 
-            color: #999; 
-            position: fixed; top: 0; left: 0; width: 100%; z-index: 999; background: #fff;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            z-index: 999; background: #fff; text-align: center;
         }
+        #accessDeniedScreen h2 { color: var(--error-color); font-family: 'Georgia', serif;}
 
         /* --- ГЛАВНОЕ МЕНЮ --- */
-        #mainMenuScreen { justify-content: center; text-align: center; }
+        #mainMenuScreen { justify-content: center; text-align: center; height: 100vh; }
 
         .logo-area {
             width: 120px; height: 120px; background-color: #f5f5f5; border-radius: 50%;
@@ -63,18 +65,19 @@
         }
         .btn-primary { background-color: var(--primary-gold); color: #fff; text-transform: uppercase; font-family: 'Georgia', serif; }
         .btn-secondary { background-color: var(--input-bg); color: #333; }
-        .btn-hr { background-color: #333; color: #fff; } /* Специальный цвет для кнопки HR */
+        .btn-hr { background-color: #333; color: #fff; }
 
         /* --- ФОРМЫ --- */
         .my-form-container { width: 100%; max-width: 380px; text-align: left; }
         h3.form-title { font-family: 'Georgia', serif; text-align: center; margin-bottom: 25px; font-size: 22px; color: #000; }
-        .form-label { margin-left: 15px; margin-bottom: 5px; font-size: 13px; color: #999; display: block; }
+        .form-label { margin-left: 15px; margin-bottom: 5px; font-size: 13px; color: #999; display: block; margin-top: 15px;}
         
         .my-form-container input, .my-form-container select, .my-form-container textarea {
             width: 100%; padding: 15px 25px; border-radius: 30px; border: none; 
-            background-color: var(--input-bg); color: #5c5c5c; font-size: 16px; 
-            box-sizing: border-box; margin-bottom: 12px; outline: none; appearance: none;
+            background-color: var(--input-bg); color: #333; font-size: 16px; 
+            box-sizing: border-box; margin-bottom: 5px; outline: none; appearance: none;
         }
+        .my-form-container input[type="date"] { appearance: auto; }
         .my-form-container textarea { border-radius: 20px; min-height: 100px; resize: vertical; }
         .my-form-container input:focus, .my-form-container select:focus, .my-form-container textarea:focus { box-shadow: 0 0 0 2px var(--primary-gold); background-color: #fff; }
 
@@ -89,6 +92,13 @@
         </svg>
     </div>
 
+    <div id="accessDeniedScreen" class="app-screen hidden">
+        <div style="margin-top: 40vh;">
+            <h2>Доступ закрыт</h2>
+            <p style="color: #777;">Ваш профиль не найден в базе сотрудников Nevestate.</p>
+        </div>
+    </div>
+
     <div id="mainMenuScreen" class="app-screen hidden">
         <div class="logo-area"><span>N</span></div>
         <h1 class="app-title">NEVESTATE PORTAL</h1>
@@ -99,7 +109,11 @@
         </button>
         
         <button class="menu-btn btn-secondary" onclick="openScreen('hrRequestScreen')">
-            👤 Запрос на сотрудника
+            👤 Заявка на подбор
+        </button>
+
+        <button class="menu-btn btn-secondary" onclick="openScreen('onboardingRequestScreen')">
+            🚀 Заявка на онбординг
         </button>
 
         <button id="hrCabinetBtn" class="menu-btn btn-hr hidden" onclick="openScreen('hrCabinetScreen')">
@@ -110,22 +124,16 @@
     <div id="referralFormScreen" class="app-screen hidden">
         <div class="my-form-container">
             <h3 class="form-title">Передача клиента</h3>
-            
             <label class="form-label">Страна интереса</label>
             <select id="countrySelect" onchange="filterBrokers()"><option value="" selected>Загрузка...</option></select>
-
             <label class="form-label">Принимающий брокер</label>
             <select id="brokerSelect"><option value="" disabled selected>Сначала выберите страну</option></select>
-
             <label class="form-label">Имя клиента</label>
             <input type="text" id="clientName" placeholder="Иван Иванов">
-
             <label class="form-label">Телефон клиента</label>
             <input type="tel" id="clientPhone" placeholder="+7 999 000-00-00">
-
             <label class="form-label">Бюджет ($)</label>
             <input type="text" id="clientBudget" inputmode="decimal" placeholder="Например: 250 000">
-
             <label class="form-label">Комментарий</label>
             <textarea id="comment" placeholder="Сроки, пожелания, нюансы..."></textarea>
         </div>
@@ -135,22 +143,105 @@
         <div class="my-form-container">
             <h3 class="form-title">Заявка на подбор</h3>
             
-            <label class="form-label">Кого ищем? (Должность)</label>
-            <input type="text" id="hrPosition" placeholder="Например: Брокер ОАЭ">
+            <label class="form-label">1. Название вакансии</label>
+            <input type="text" id="hr_v_title" placeholder="Например: Брокер ОАЭ">
 
-            <label class="form-label">Требуемый опыт</label>
-            <select id="hrExperience">
-                <option value="Без опыта">Без опыта</option>
-                <option value="От 1 до 3 лет" selected>От 1 до 3 лет</option>
-                <option value="От 3 до 6 лет">От 3 до 6 лет</option>
-                <option value="Более 6 лет">Более 6 лет</option>
+            <label class="form-label">2. Подразделение / Отдел</label>
+            <input type="text" id="hr_v_dept" placeholder="Например: Отдел продаж Дубай">
+
+            <label class="form-label">3. Непосредственный руководитель</label>
+            <input type="text" id="hr_v_manager" placeholder="ФИО руководителя">
+
+            <label class="form-label">4. Причины открытия вакансии</label>
+            <textarea id="hr_v_reason" placeholder="Новая ставка, замена ушедшего (почему ушел?), расширение..."></textarea>
+
+            <label class="form-label">5. Желаемая дата закрытия</label>
+            <input type="date" id="hr_v_date">
+
+            <label class="form-label">6. Формат работы</label>
+            <select id="hr_v_format">
+                <option value="Офис">Офис</option>
+                <option value="Удаленка">Удалённая работа</option>
+                <option value="Гибрид">Гибрид</option>
             </select>
 
-            <label class="form-label">Предполагаемая ЗП / Фикс ($)</label>
-            <input type="text" id="hrSalary" placeholder="Например: 1000$ + %">
+            <label class="form-label">7. Командировки</label>
+            <input type="text" id="hr_v_trips" placeholder="Нет / Да (как часто?)">
 
-            <label class="form-label">Основные требования и задачи</label>
-            <textarea id="hrRequirements" placeholder="Опишите, чем будет заниматься человек и какие навыки критичны..."></textarea>
+            <label class="form-label">8. Формат занятости</label>
+            <select id="hr_v_employment">
+                <option value="Постоянная, полный день">Постоянная, полный день</option>
+                <option value="Временный контракт">Временный контракт</option>
+                <option value="Проектная занятость">Проектная занятость</option>
+                <option value="Частичная занятость">Частичная занятость</option>
+            </select>
+
+            <label class="form-label">9. Уровень зарплаты</label>
+            <input type="text" id="hr_v_salary" placeholder="Фикс, KPI, % со сделок">
+
+            <label class="form-label">10. Обязанности кандидата</label>
+            <textarea id="hr_v_duties" placeholder="Что конкретно нужно будет делать..."></textarea>
+
+            <label class="form-label">11. Требования к кандидату</label>
+            <textarea id="hr_v_reqs" placeholder="Опыт, навыки, языки..."></textarea>
+
+            <label class="form-label">12. Дополнительные комментарии</label>
+            <textarea id="hr_v_comments" placeholder="Любые другие пожелания..."></textarea>
+        </div>
+    </div>
+
+    <div id="onboardingRequestScreen" class="app-screen hidden">
+        <div class="my-form-container">
+            <h3 class="form-title">Заявка на онбординг</h3>
+            
+            <label class="form-label">1. ФИО сотрудника (RU/EN)</label>
+            <input type="text" id="onb_name" placeholder="Иванов Иван / Ivan Ivanov">
+
+            <label class="form-label">2. Должность и отдел</label>
+            <input type="text" id="onb_position" placeholder="Брокер, Отдел продаж">
+
+            <label class="form-label">3. Страна проживания</label>
+            <input type="text" id="onb_country" placeholder="ОАЭ, Бали, Россия...">
+
+            <label class="form-label">4. Дата начала работы</label>
+            <input type="date" id="onb_start_date">
+
+            <label class="form-label">5. Контакты (Email, Тел, TG)</label>
+            <textarea id="onb_contacts" placeholder="ivan@gmail.com, +7..., @ivan_tg" style="min-height: 80px;"></textarea>
+
+            <label class="form-label">6. Место работы</label>
+            <select id="onb_workplace">
+                <option value="Офис">Офис</option>
+                <option value="Удаленка">Удалённый формат</option>
+                <option value="Гибрид">Гибрид</option>
+            </select>
+
+            <label class="form-label">7. Требуется ли рабочая почта?</label>
+            <select id="onb_email_req">
+                <option value="Да">Да</option>
+                <option value="Нет">Нет</option>
+            </select>
+
+            <label class="form-label">8. Корпоративная сим-карта / e-sim?</label>
+            <input type="text" id="onb_sim" placeholder="Нужна физическая / Нужна e-sim / Не нужна">
+
+            <label class="form-label">9. Нужно ли оборудование?</label>
+            <input type="text" id="onb_equipment" placeholder="Ноутбук, телефон и т.д.">
+
+            <label class="form-label">10. Офисные принадлежности</label>
+            <input type="text" id="onb_office_extras" placeholder="Канцелярия, мебель (если в офисе)">
+
+            <label class="form-label">11. Доступы к Google-диску</label>
+            <textarea id="onb_gdrive" placeholder="К каким папкам нужен доступ..." style="min-height: 80px;"></textarea>
+
+            <label class="form-label">12. Группы WhatsApp</label>
+            <textarea id="onb_whatsapp" placeholder="В какие рабочие чаты добавить..." style="min-height: 80px;"></textarea>
+
+            <label class="form-label">13. Другие доступы (CRM, сервисы)</label>
+            <textarea id="onb_other_access" placeholder="amoCRM, Notion, Trello..." style="min-height: 80px;"></textarea>
+
+            <label class="form-label">14. Дополнительные комментарии</label>
+            <textarea id="onb_comments" placeholder="Особые отметки для HR и IT..." style="min-height: 80px;"></textarea>
         </div>
     </div>
 
@@ -170,22 +261,33 @@
         tg.setHeaderColor('#ffffff'); tg.setBackgroundColor('#ffffff');
 
         // --- НАСТРОЙКИ ---
-        // ЗАМЕНИТЕ ЭТОТ ID НА TELEGRAM ID ВАШЕГО HR (ЦИФРЫ)!
         const ALLOWED_HR_IDS = [1211686949, 8596402710]; 
         
+        // ВНИМАНИЕ: СЮДА НУЖНО ДОБАВИТЬ ID ВСЕХ СОТРУДНИКОВ, ЧТОБЫ ОНИ МОГЛИ ВОЙТИ
+        // Если массив пустой [], проверка работать не будет (пустит всех).
+        const ALLOWED_EMPLOYEES = []; 
+
         const GET_URL = 'https://n8n.nevn8n8amocrm.online/webhook/72ab1905-055c-4452-ae15-16245b46693e';
         const POST_REFERRAL_URL = 'https://n8n.nevn8n8amocrm.online/webhook/f2cd4077-afb6-428e-adc0-4357783010a7';
-        // ВАМ НУЖЕН НОВЫЙ ВЕБХУК В N8N ДЛЯ ПРИЕМА HR ЗАЯВОК:
-        const POST_HR_URL = 'https://n8n.nevn8n8amocrm.online/webhook/NEW-HR-WEBHOOK-ID'; 
+        
+        // ВЕБХУКИ ДЛЯ НОВЫХ ФОРМ (Создай их в n8n)
+        const POST_HR_VACANCY_URL = 'https://n8n.nevn8n8amocrm.online/webhook/NEW-HR-VACANCY-WEBHOOK'; 
+        const POST_ONBOARDING_URL = 'https://n8n.nevn8n8amocrm.online/webhook/NEW-ONBOARDING-WEBHOOK';
 
         let allBrokers = []; let allCountries = [];
         let currentScreenId = 'loaderScreen';
 
         // 1. ИНИЦИАЛИЗАЦИЯ
         async function init() {
-            // Проверка прав для кнопки HR
             const currentUserId = tg.initDataUnsafe.user?.id;
-            // Если ID пользователя есть в списке HR, показываем кнопку
+            
+            // ПРОВЕРКА ДОСТУПА СОТРУДНИКА
+            if (ALLOWED_EMPLOYEES.length > 0 && currentUserId && !ALLOWED_EMPLOYEES.includes(currentUserId)) {
+                document.getElementById('loaderScreen').classList.add('hidden');
+                document.getElementById('accessDeniedScreen').classList.remove('hidden');
+                return; // Останавливаем загрузку приложения
+            }
+
             if (ALLOWED_HR_IDS.includes(currentUserId)) {
                 document.getElementById('hrCabinetBtn').classList.remove('hidden');
             }
@@ -197,7 +299,7 @@
                 allBrokers = data.brokers; allCountries = data.countries;
                 
                 renderSelects();
-                openScreen('mainMenuScreen'); // Идем в меню
+                openScreen('mainMenuScreen');
             } catch (error) {
                 alert("Ошибка загрузки данных. Проверьте интернет.");
             }
@@ -220,38 +322,39 @@
 
         // 3. УМНАЯ НАВИГАЦИЯ
         function openScreen(screenId) {
-            // Прячем текущий
             document.getElementById(currentScreenId).classList.add('hidden');
-            // Показываем новый
             document.getElementById(screenId).classList.remove('hidden');
             currentScreenId = screenId;
 
-            // Очищаем события кнопок, чтобы не двоились
             tg.MainButton.offClick(submitReferral);
             tg.MainButton.offClick(submitHrRequest);
+            tg.MainButton.offClick(submitOnboarding);
             tg.BackButton.offClick(goBack);
 
             if (screenId === 'mainMenuScreen') {
                 tg.BackButton.hide();
                 tg.MainButton.hide();
             } else {
-                // Если мы внутри какой-то формы - показываем "Назад"
                 tg.BackButton.show();
                 tg.BackButton.onClick(goBack);
 
-                // Настраиваем Главную Кнопку в зависимости от открытого экрана
                 if (screenId === 'referralFormScreen') {
                     tg.MainButton.setText("ОТПРАВИТЬ ЛИД");
                     tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' });
                     tg.MainButton.onClick(submitReferral);
                     tg.MainButton.show();
                 } else if (screenId === 'hrRequestScreen') {
-                    tg.MainButton.setText("ОТПРАВИТЬ ЗАЯВКУ");
-                    tg.MainButton.setParams({ color: '#333333', text_color: '#ffffff' }); // Черная кнопка для HR
+                    tg.MainButton.setText("ОТПРАВИТЬ ЗАЯВКУ НА ПОДБОР");
+                    tg.MainButton.setParams({ color: '#333333', text_color: '#ffffff' });
                     tg.MainButton.onClick(submitHrRequest);
                     tg.MainButton.show();
+                } else if (screenId === 'onboardingRequestScreen') {
+                    tg.MainButton.setText("ОТПРАВИТЬ ЗАЯВКУ НА ОНБОРДИНГ");
+                    tg.MainButton.setParams({ color: '#333333', text_color: '#ffffff' });
+                    tg.MainButton.onClick(submitOnboarding);
+                    tg.MainButton.show();
                 } else if (screenId === 'hrCabinetScreen') {
-                    tg.MainButton.hide(); // В кабинете пока нет отправки формы
+                    tg.MainButton.hide();
                 }
             }
         }
@@ -283,28 +386,69 @@
         }
 
         async function submitHrRequest() {
-            const position = document.getElementById('hrPosition').value;
-            if (!position) { tg.showAlert("Укажите должность!"); return; }
+            const title = document.getElementById('hr_v_title').value;
+            if (!title) { tg.showAlert("Укажите название вакансии!"); return; }
             tg.MainButton.showProgress();
 
             const payload = {
-                type: 'hr_request',
+                type: 'hr_vacancy',
                 sender_name: tg.initDataUnsafe.user?.first_name,
                 sender_tg_id: tg.initDataUnsafe.user?.id,
-                position: position,
-                experience: document.getElementById('hrExperience').value,
-                salary: document.getElementById('hrSalary').value,
-                requirements: document.getElementById('hrRequirements').value
+                v_title: title,
+                v_dept: document.getElementById('hr_v_dept').value,
+                v_manager: document.getElementById('hr_v_manager').value,
+                v_reason: document.getElementById('hr_v_reason').value,
+                v_date: document.getElementById('hr_v_date').value,
+                v_format: document.getElementById('hr_v_format').value,
+                v_trips: document.getElementById('hr_v_trips').value,
+                v_employment: document.getElementById('hr_v_employment').value,
+                v_salary: document.getElementById('hr_v_salary').value,
+                v_duties: document.getElementById('hr_v_duties').value,
+                v_reqs: document.getElementById('hr_v_reqs').value,
+                v_comments: document.getElementById('hr_v_comments').value
             };
 
-            await sendData(POST_HR_URL, payload, "✅ Заявка отправлена в HR!");
+            await sendData(POST_HR_VACANCY_URL, payload, "✅ Заявка на подбор отправлена!");
+        }
+
+        async function submitOnboarding() {
+            const name = document.getElementById('onb_name').value;
+            if (!name) { tg.showAlert("Укажите ФИО сотрудника!"); return; }
+            tg.MainButton.showProgress();
+
+            const payload = {
+                type: 'hr_onboarding',
+                sender_name: tg.initDataUnsafe.user?.first_name,
+                sender_tg_id: tg.initDataUnsafe.user?.id,
+                o_name: name,
+                o_position: document.getElementById('onb_position').value,
+                o_country: document.getElementById('onb_country').value,
+                o_start_date: document.getElementById('onb_start_date').value,
+                o_contacts: document.getElementById('onb_contacts').value,
+                o_workplace: document.getElementById('onb_workplace').value,
+                o_email_req: document.getElementById('onb_email_req').value,
+                o_sim: document.getElementById('onb_sim').value,
+                o_equipment: document.getElementById('onb_equipment').value,
+                o_office_extras: document.getElementById('onb_office_extras').value,
+                o_gdrive: document.getElementById('onb_gdrive').value,
+                o_whatsapp: document.getElementById('onb_whatsapp').value,
+                o_other_access: document.getElementById('onb_other_access').value,
+                o_comments: document.getElementById('onb_comments').value
+            };
+
+            await sendData(POST_ONBOARDING_URL, payload, "✅ Заявка на онбординг отправлена!");
         }
 
         async function sendData(url, payload, successMsg) {
             try {
                 const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 tg.MainButton.hideProgress();
-                if (res.ok) { tg.showAlert(successMsg); openScreen('mainMenuScreen'); } 
+                if (res.ok) { 
+                    tg.showAlert(successMsg); 
+                    // Очищаем форму после успешной отправки
+                    document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+                    openScreen('mainMenuScreen'); 
+                } 
                 else { tg.showAlert("Ошибка сервера. Попробуйте позже."); }
             } catch (error) {
                 tg.MainButton.hideProgress();
