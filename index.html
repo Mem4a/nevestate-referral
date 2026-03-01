@@ -34,7 +34,7 @@
             align-items: center;
             box-sizing: border-box;
             animation: fadeIn 0.3s ease-in-out;
-            padding-bottom: 100px; /* Отступ для главной кнопки TG */
+            padding-bottom: 100px;
         }
 
         /* --- ЭКРАН ЗАГРУЗКИ & ДОСТУП ЗАПРЕЩЕН --- */
@@ -68,13 +68,23 @@
         
         .btn-primary { background-color: var(--primary-gold); color: #fff; text-transform: uppercase; font-family: 'Georgia', serif; }
         .btn-secondary { background-color: var(--input-bg); color: #333; }
-        .btn-cabinet { background-color: #333; color: #fff; } /* Темная кнопка для кабинетов */
+        .btn-cabinet { background-color: #333; color: #fff; }
 
         /* --- ФОРМЫ И КАБИНЕТЫ --- */
         .my-container { width: 100%; max-width: 380px; text-align: left; }
         h3.screen-title { font-family: 'Georgia', serif; text-align: center; margin-bottom: 25px; font-size: 22px; color: #000; }
         
-        /* Стили для карточек сделок (заглушка) */
+        /* Стили формы */
+        .form-label { margin-left: 15px; margin-bottom: 5px; font-size: 13px; color: #999; display: block; margin-top: 15px;}
+        .my-container input, .my-container select, .my-container textarea {
+            width: 100%; padding: 15px 25px; border-radius: 30px; border: none; 
+            background-color: var(--input-bg); color: #333; font-size: 16px; 
+            box-sizing: border-box; margin-bottom: 5px; outline: none; appearance: none;
+        }
+        .my-container select { background-image: url('data:image/svg+xml;utf8,<svg fill="gray" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position-x: 95%; background-position-y: center; }
+        .my-container textarea { border-radius: 20px; min-height: 100px; resize: vertical; }
+        .my-container input:focus, .my-container select:focus, .my-container textarea:focus { box-shadow: 0 0 0 2px var(--primary-gold); background-color: #fff; }
+
         .lead-card {
             background: #fff; border: 1px solid #ddd; border-radius: 15px; padding: 15px; margin-bottom: 15px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
@@ -91,7 +101,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 38 38" stroke="#bba589">
             <g fill="none" fill-rule="evenodd"><g transform="translate(1 1)" stroke-width="2"><circle stroke-opacity=".5" cx="18" cy="18" r="18"/><path d="M36 18c0-9.94-8.06-18-18-18"><animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="1s" repeatCount="indefinite"/></path></g></g>
         </svg>
-        <p style="color: #999; margin-top: 20px; font-size: 14px;">Авторизация...</p>
+        <p style="color: #999; margin-top: 20px; font-size: 14px;" id="loaderText">Авторизация...</p>
     </div>
 
     <div id="accessDeniedScreen" class="app-screen hidden">
@@ -121,11 +131,9 @@
         <button id="btnCabinetBroker" class="menu-btn btn-cabinet hidden" onclick="openScreen('brokerCabinetScreen')">
             💼 Кабинет Брокера
         </button>
-        
         <button id="btnCabinetHead" class="menu-btn btn-cabinet hidden" onclick="openScreen('headCabinetScreen')">
             📈 Кабинет Руководителя
         </button>
-
         <button id="btnCabinetHR" class="menu-btn btn-cabinet hidden" onclick="openScreen('hrCabinetScreen')">
             ⚙️ Кабинет HR
         </button>
@@ -157,10 +165,27 @@
     <div id="referralFormScreen" class="app-screen hidden">
         <div class="my-container">
             <h3 class="screen-title">Передача клиента</h3>
-            <p style="text-align: center; color: #999; margin-top: 50px;">Форма передачи лида (надо вставить инпуты из старой версии)</p>
+            
+            <label class="form-label">Страна интереса</label>
+            <select id="refCountry" onchange="filterBrokers()">
+                <option value="" disabled selected>Загрузка...</option>
+            </select>
+
+            <label class="form-label">Брокер</label>
+            <select id="refBroker">
+                <option value="" disabled selected>Сначала выберите страну</option>
+            </select>
+
+            <label class="form-label">Имя клиента</label>
+            <input type="text" id="refClientName" placeholder="Например: Иван Иванов">
+
+            <label class="form-label">Телефон клиента</label>
+            <input type="tel" id="refClientPhone" placeholder="+7 999 000-00-00">
+
+            <label class="form-label">Комментарий по лиду</label>
+            <textarea id="refComment" placeholder="Бюджет, сроки, пожелания, нюансы..."></textarea>
         </div>
     </div>
-
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -169,79 +194,152 @@
         tg.setBackgroundColor('#ffffff');
 
         // --- URL ВЕБХУКОВ ---
-        // Твой новый вебхук для авторизации
         const AUTH_URL = 'https://n8n.nevn8n8amocrm.online/webhook/b0607fcb-775f-466e-8f2d-cc3b81fb632e'; 
+        // Вебхук для получения списка брокеров (из твоего первого сообщения)
+        const GET_BROKERS_URL = 'https://n8n.nevn8n8amocrm.online/webhook/72ab1905-055c-4452-ae15-16245b46693e';
+        // Вебхук куда отправляется форма лида (из твоего первого сообщения)
+        const POST_REFERRAL_URL = 'https://n8n.nevn8n8amocrm.online/webhook/f2cd4077-afb6-428e-adc0-4357783010a7';
         
-        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
         let currentUser = null; 
         let currentScreenId = 'loaderScreen';
+        let allBrokers = [];
+        let allCountries = [];
 
-        // 1. ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
+        // 1. ГЛАВНАЯ ФУНКЦИЯ
         async function init() {
             const tgId = tg.initDataUnsafe.user?.id;
-            
-            // Если зашли не из ТГ, не пускаем (для тестов в браузере можешь временно вписать свой ID)
-            // const tgId = 1211686949; 
+            // Для тестов: const tgId = 1211686949; 
 
-            if (!tgId) {
-                showScreen('accessDeniedScreen');
-                return;
-            }
+            if (!tgId) { showScreen('accessDeniedScreen'); return; }
 
             try {
-                // Стучимся в n8n для проверки прав
+                // АВТОРИЗАЦИЯ
                 const authRes = await fetch(AUTH_URL, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tg_id: tgId })
                 });
                 
-                if (!authRes.ok) throw new Error("Network response was not ok");
-                
+                if (!authRes.ok) throw new Error("Auth error");
                 const data = await authRes.json();
                 
-                // Проверяем, пустил ли нас n8n (ожидаем статус "ok" и is_active: true)
-                if (data.status !== 'ok' || data.is_active === false) {
-                    showScreen('accessDeniedScreen');
-                    return;
-                }
-
-                // Сохраняем данные пользователя
+                if (data.status !== 'ok' || data.is_active === false) { showScreen('accessDeniedScreen'); return; }
                 currentUser = data; 
                 
-                // Приветствуем по имени
-                if(currentUser.name) {
-                    document.getElementById('userNameDisplay').innerText = currentUser.name;
-                }
+                if(currentUser.name) document.getElementById('userNameDisplay').innerText = currentUser.name;
 
-                // Разбиваем строку ролей (например "Admin, HR") в массив ["Admin", "HR"]
                 const roles = currentUser.roles ? currentUser.roles.split(',').map(r => r.trim()) : [];
-
-                // РАСПРЕДЕЛЕНИЕ ПРАВ ДОСТУПА К КНОПКАМ
                 const isAdmin = roles.includes('Admin');
 
-                if (isAdmin || roles.includes('Broker')) {
-                    document.getElementById('btnCabinetBroker').classList.remove('hidden');
-                }
-                
-                if (isAdmin || roles.includes('Head')) {
-                    document.getElementById('btnCabinetHead').classList.remove('hidden');
-                }
+                if (isAdmin || roles.includes('Broker')) document.getElementById('btnCabinetBroker').classList.remove('hidden');
+                if (isAdmin || roles.includes('Head')) document.getElementById('btnCabinetHead').classList.remove('hidden');
+                if (isAdmin || roles.includes('HR')) document.getElementById('btnCabinetHR').classList.remove('hidden');
 
-                if (isAdmin || roles.includes('HR')) {
-                    document.getElementById('btnCabinetHR').classList.remove('hidden');
-                }
+                // ЗАГРУЗКА СПРАВОЧНИКОВ БРОКЕРОВ
+                document.getElementById('loaderText').innerText = 'Загрузка справочников...';
+                await loadDictionaries();
 
-                // Если всё отлично — открываем Главное Меню
                 openScreen('mainMenuScreen');
 
             } catch (error) {
-                console.error("Auth error:", error);
-                tg.showAlert("Ошибка связи с сервером авторизации.");
+                console.error(error);
+                tg.showAlert("Ошибка сервера. Попробуйте позже.");
             }
         }
 
-        // 2. ФУНКЦИЯ НАВИГАЦИИ МЕЖДУ ЭКРАНАМИ
+        // 2. ЗАГРУЗКА БРОКЕРОВ И СТРАН
+        async function loadDictionaries() {
+            try {
+                const res = await fetch(GET_BROKERS_URL, { method: 'GET' });
+                if (res.ok) {
+                    const data = await res.json();
+                    allBrokers = data.brokers; 
+                    allCountries = data.countries;
+                    
+                    // Заполняем селект стран
+                    const cSelect = document.getElementById('refCountry');
+                    cSelect.innerHTML = '<option value="" disabled selected>Выберите страну</option>';
+                    allCountries.forEach(c => cSelect.innerHTML += `<option value="${c}">${c}</option>`);
+                }
+            } catch (error) {
+                console.log("Ошибка загрузки брокеров", error);
+            }
+        }
+
+        // Фильтрация брокеров при выборе страны
+        function filterBrokers() {
+            const selectedCountry = document.getElementById('refCountry').value;
+            const bSelect = document.getElementById('refBroker');
+            
+            bSelect.innerHTML = '<option value="" disabled selected>Выберите брокера</option>';
+            
+            // Находим брокеров, у которых в массиве countries есть выбранная страна
+            const filtered = selectedCountry ? allBrokers.filter(b => b.countries.includes(selectedCountry)) : allBrokers;
+            
+            filtered.forEach(b => {
+                bSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
+            });
+        }
+
+        // 3. ОТПРАВКА ФОРМЫ
+        async function submitReferral() {
+            const country = document.getElementById('refCountry').value;
+            const brokerId = document.getElementById('refBroker').value;
+            const clientName = document.getElementById('refClientName').value;
+            const clientPhone = document.getElementById('refClientPhone').value;
+            const comment = document.getElementById('refComment').value;
+            
+            if (!country || !brokerId || !clientName || !clientPhone) { 
+                tg.showAlert("Пожалуйста, заполните Страну, Брокера, Имя и Телефон клиента!"); 
+                return; 
+            }
+
+            tg.MainButton.showProgress();
+
+            const payload = {
+                type: 'lead_referral',
+                // Кто передает
+                sender_name: currentUser.name || tg.initDataUnsafe.user?.first_name,
+                sender_tg_id: tg.initDataUnsafe.user?.id,
+                sender_amo_id: currentUser.amo_id,
+                // Кому передает (кому упадет лид)
+                target_broker_id: brokerId,
+                target_country: country,
+                // Данные клиента
+                client_name: clientName,
+                client_phone: clientPhone,
+                comment: comment
+            };
+
+            try {
+                const res = await fetch(POST_REFERRAL_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+                
+                tg.MainButton.hideProgress();
+                
+                if (res.ok) { 
+                    tg.showAlert("✅ Лид успешно передан брокеру!"); 
+                    // Очищаем форму
+                    document.getElementById('refCountry').value = '';
+                    document.getElementById('refBroker').innerHTML = '<option value="" disabled selected>Сначала выберите страну</option>';
+                    document.getElementById('refClientName').value = '';
+                    document.getElementById('refClientPhone').value = '';
+                    document.getElementById('refComment').value = '';
+                    // Возвращаемся в меню
+                    openScreen('mainMenuScreen'); 
+                } else { 
+                    tg.showAlert("Ошибка сохранения лида."); 
+                }
+            } catch (error) {
+                tg.MainButton.hideProgress();
+                tg.showAlert("Ошибка сети.");
+            }
+        }
+
+        // 4. НАВИГАЦИЯ
         function showScreen(screenId) {
             document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
             document.getElementById(screenId).classList.remove('hidden');
@@ -250,9 +348,8 @@
 
         function openScreen(screenId) {
             showScreen(screenId);
-
-            // Настраиваем кнопку "Назад" в Telegram
             tg.BackButton.offClick(goBack);
+            tg.MainButton.offClick(submitReferral); // Очищаем клик
 
             if (screenId === 'mainMenuScreen') {
                 tg.BackButton.hide();
@@ -261,21 +358,24 @@
                 tg.BackButton.show();
                 tg.BackButton.onClick(goBack);
                 
-                // Если зашли в кабинет брокера - можем сымитировать загрузку лидов
+                // Если открыли форму - настраиваем Главную Кнопку ТГ
+                if (screenId === 'referralFormScreen') {
+                    tg.MainButton.setText("ОТПРАВИТЬ ЛИД");
+                    tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' });
+                    tg.MainButton.onClick(submitReferral);
+                    tg.MainButton.show();
+                }
+
                 if (screenId === 'brokerCabinetScreen') {
                     loadBrokerLeads();
                 }
             }
         }
 
-        function goBack() { 
-            openScreen('mainMenuScreen'); 
-        }
+        function goBack() { openScreen('mainMenuScreen'); }
 
-        // Заглушка для функции загрузки лидов брокера (сделаем на следующем шаге)
         function loadBrokerLeads() {
             const list = document.getElementById('brokerLeadsList');
-            // Здесь позже будет fetch-запрос в n8n за сделками из Broker_Leads
             setTimeout(() => {
                 list.innerHTML = `
                     <div class="lead-card">
@@ -283,16 +383,10 @@
                         <p>ОАЭ • Бюджет: $250,000</p>
                         <p style="color: #bba589; margin-top: 5px;">Новый лид</p>
                     </div>
-                    <div class="lead-card">
-                        <h4>Анна Смирнова</h4>
-                        <p>Бали • Бюджет: $150,000</p>
-                        <p style="color: green; margin-top: 5px;">В работе</p>
-                    </div>
                 `;
             }, 800);
         }
 
-        // Запускаем приложение
         init();
     </script>
 </body>
