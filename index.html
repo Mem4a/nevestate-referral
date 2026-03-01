@@ -1,64 +1,299 @@
-// Новый URL для авторизации (создай его в n8n)
-const AUTH_URL = 'https://n8n.nevn8n8amocrm.online/webhook/b0607fcb-775f-466e-8f2d-cc3b81fb632e'; 
-let currentUser = null; // Здесь будем хранить данные юзера после входа
-
-async function init() {
-    const tgId = tg.initDataUnsafe.user?.id;
-    
-    // Если мы тестируем в браузере (без ТГ), можно заглушить:
-    // const tgId = 1211686949; 
-
-    if (!tgId) {
-        showScreen('accessDeniedScreen');
-        return;
-    }
-
-    try {
-        // 1. Стучимся в n8n для проверки прав
-        const authRes = await fetch(AUTH_URL, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tg_id: tgId })
-        });
-        
-        if (!authRes.ok) throw new Error("Server error");
-        
-        const data = await authRes.json();
-        
-        // 2. Проверяем доступ
-        if (data.status === 'error' || !data.is_active) {
-            showScreen('accessDeniedScreen');
-            return;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nevestate Portal</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* --- БАЗОВЫЕ НАСТРОЙКИ --- */
+        :root {
+            --primary-gold: #bba589;
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --input-bg: #eeeeee;
+            --error-color: #ff3b30;
         }
 
-        // 3. Сохраняем профиль
-        currentUser = data; // { name: "Егор", roles: "Admin", ... }
-        const roles = currentUser.roles.split(',').map(r => r.trim()); // Превращаем строку "Broker, HR" в массив ["Broker", "HR"]
-
-        // 4. Распределяем кнопки на Главном Экране
-        
-        // Админ видит ВСЁ.
-        const isAdmin = roles.includes('Admin');
-
-        if (isAdmin || roles.includes('Broker')) {
-            document.getElementById('brokerCabinetBtn').classList.remove('hidden'); // Создай эту кнопку в HTML
-        }
-        
-        if (isAdmin || roles.includes('HR')) {
-            document.getElementById('hrCabinetBtn').classList.remove('hidden');
-        }
-        
-        if (isAdmin || roles.includes('Head')) {
-            document.getElementById('headCabinetBtn').classList.remove('hidden'); // Создай эту кнопку в HTML
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            min-height: 100vh;
         }
 
-        // 5. Загружаем справочники (страны/брокеры для формы рефералов)
-        await loadDictionaries();
+        .hidden { display: none !important; }
 
-        // 6. Открываем меню
-        openScreen('mainMenuScreen');
+        /* --- ЭКРАНЫ --- */
+        .app-screen {
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            animation: fadeIn 0.3s ease-in-out;
+            padding-bottom: 100px; /* Отступ для главной кнопки TG */
+        }
 
-    } catch (error) {
-        alert("Ошибка авторизации. Проверьте интернет.");
-    }
-}
+        /* --- ЭКРАН ЗАГРУЗКИ & ДОСТУП ЗАПРЕЩЕН --- */
+        #loaderScreen, #accessDeniedScreen { 
+            justify-content: center; 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            z-index: 999; background: #fff; text-align: center;
+        }
+        #accessDeniedScreen h2 { color: var(--error-color); font-family: 'Georgia', serif;}
+
+        /* --- ГЛАВНОЕ МЕНЮ --- */
+        #mainMenuScreen { justify-content: center; text-align: center; height: auto; min-height: 100vh; }
+
+        .logo-area {
+            width: 120px; height: 120px; background-color: #f5f5f5; border-radius: 50%;
+            margin-bottom: 20px; display: flex; align-items: center; justify-content: center;
+            font-size: 40px; color: var(--primary-gold); border: 2px solid var(--primary-gold);
+            overflow: hidden;
+        }
+
+        .app-title { font-family: 'Georgia', serif; font-size: 24px; margin-bottom: 10px; color: #000; }
+        .app-subtitle { font-size: 14px; color: #777; margin-bottom: 30px; max-width: 300px; line-height: 1.5; }
+
+        .menu-btn {
+            width: 100%; max-width: 300px; padding: 16px; margin-bottom: 12px;
+            border-radius: 100px; border: none; font-size: 15px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: opacity 0.2s;
+        }
+        .menu-btn:active { opacity: 0.7; }
+        
+        .btn-primary { background-color: var(--primary-gold); color: #fff; text-transform: uppercase; font-family: 'Georgia', serif; }
+        .btn-secondary { background-color: var(--input-bg); color: #333; }
+        .btn-cabinet { background-color: #333; color: #fff; } /* Темная кнопка для кабинетов */
+
+        /* --- ФОРМЫ И КАБИНЕТЫ --- */
+        .my-container { width: 100%; max-width: 380px; text-align: left; }
+        h3.screen-title { font-family: 'Georgia', serif; text-align: center; margin-bottom: 25px; font-size: 22px; color: #000; }
+        
+        /* Стили для карточек сделок (заглушка) */
+        .lead-card {
+            background: #fff; border: 1px solid #ddd; border-radius: 15px; padding: 15px; margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .lead-card h4 { margin: 0 0 5px 0; font-size: 16px; }
+        .lead-card p { margin: 0; font-size: 13px; color: #666; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="loaderScreen" class="app-screen">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 38 38" stroke="#bba589">
+            <g fill="none" fill-rule="evenodd"><g transform="translate(1 1)" stroke-width="2"><circle stroke-opacity=".5" cx="18" cy="18" r="18"/><path d="M36 18c0-9.94-8.06-18-18-18"><animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="1s" repeatCount="indefinite"/></path></g></g>
+        </svg>
+        <p style="color: #999; margin-top: 20px; font-size: 14px;">Авторизация...</p>
+    </div>
+
+    <div id="accessDeniedScreen" class="app-screen hidden">
+        <div style="margin-top: 35vh;">
+            <h2>Доступ закрыт</h2>
+            <p style="color: #777; padding: 0 20px;">Ваш профиль не найден или деактивирован в базе сотрудников Nevestate.</p>
+        </div>
+    </div>
+
+    <div id="mainMenuScreen" class="app-screen hidden">
+        <div class="logo-area"><span>N</span></div>
+        <h1 class="app-title">NEVESTATE PORTAL</h1>
+        <p class="app-subtitle">Привет, <span id="userNameDisplay">Коллега</span>! Выберите нужный раздел.</p>
+
+        <button class="menu-btn btn-primary" onclick="openScreen('referralFormScreen')">
+            + Передать лид
+        </button>
+        <button class="menu-btn btn-secondary" onclick="tg.showAlert('Раздел в разработке')">
+            🚀 Заявка на онбординг
+        </button>
+        <button class="menu-btn btn-secondary" onclick="tg.showAlert('Раздел в разработке')">
+            👤 Заявка на подбор
+        </button>
+
+        <hr style="width: 100%; max-width: 300px; border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+
+        <button id="btnCabinetBroker" class="menu-btn btn-cabinet hidden" onclick="openScreen('brokerCabinetScreen')">
+            💼 Кабинет Брокера
+        </button>
+        
+        <button id="btnCabinetHead" class="menu-btn btn-cabinet hidden" onclick="openScreen('headCabinetScreen')">
+            📈 Кабинет Руководителя
+        </button>
+
+        <button id="btnCabinetHR" class="menu-btn btn-cabinet hidden" onclick="openScreen('hrCabinetScreen')">
+            ⚙️ Кабинет HR
+        </button>
+    </div>
+
+    <div id="brokerCabinetScreen" class="app-screen hidden">
+        <div class="my-container">
+            <h3 class="screen-title">Мои лиды</h3>
+            <div id="brokerLeadsList">
+                <p style="text-align: center; color: #999; margin-top: 50px;">Загрузка лидов...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="headCabinetScreen" class="app-screen hidden">
+        <div class="my-container">
+            <h3 class="screen-title">Сводка по отделу</h3>
+            <p style="text-align: center; color: #999; margin-top: 50px;">Здесь будет статистика и лиды ваших брокеров.</p>
+        </div>
+    </div>
+
+    <div id="hrCabinetScreen" class="app-screen hidden">
+        <div class="my-container">
+            <h3 class="screen-title">Управление командой</h3>
+            <p style="text-align: center; color: #999; margin-top: 50px;">Здесь будут заявки на онбординг и вакансии.</p>
+        </div>
+    </div>
+
+    <div id="referralFormScreen" class="app-screen hidden">
+        <div class="my-container">
+            <h3 class="screen-title">Передача клиента</h3>
+            <p style="text-align: center; color: #999; margin-top: 50px;">Форма передачи лида (надо вставить инпуты из старой версии)</p>
+        </div>
+    </div>
+
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.setHeaderColor('#ffffff'); 
+        tg.setBackgroundColor('#ffffff');
+
+        // --- URL ВЕБХУКОВ ---
+        // Твой новый вебхук для авторизации
+        const AUTH_URL = 'https://n8n.nevn8n8amocrm.online/webhook/b0607fcb-775f-466e-8f2d-cc3b81fb632e'; 
+        
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+        let currentUser = null; 
+        let currentScreenId = 'loaderScreen';
+
+        // 1. ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
+        async function init() {
+            const tgId = tg.initDataUnsafe.user?.id;
+            
+            // Если зашли не из ТГ, не пускаем (для тестов в браузере можешь временно вписать свой ID)
+            // const tgId = 1211686949; 
+
+            if (!tgId) {
+                showScreen('accessDeniedScreen');
+                return;
+            }
+
+            try {
+                // Стучимся в n8n для проверки прав
+                const authRes = await fetch(AUTH_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tg_id: tgId })
+                });
+                
+                if (!authRes.ok) throw new Error("Network response was not ok");
+                
+                const data = await authRes.json();
+                
+                // Проверяем, пустил ли нас n8n (ожидаем статус "ok" и is_active: true)
+                if (data.status !== 'ok' || data.is_active === false) {
+                    showScreen('accessDeniedScreen');
+                    return;
+                }
+
+                // Сохраняем данные пользователя
+                currentUser = data; 
+                
+                // Приветствуем по имени
+                if(currentUser.name) {
+                    document.getElementById('userNameDisplay').innerText = currentUser.name;
+                }
+
+                // Разбиваем строку ролей (например "Admin, HR") в массив ["Admin", "HR"]
+                const roles = currentUser.roles ? currentUser.roles.split(',').map(r => r.trim()) : [];
+
+                // РАСПРЕДЕЛЕНИЕ ПРАВ ДОСТУПА К КНОПКАМ
+                const isAdmin = roles.includes('Admin');
+
+                if (isAdmin || roles.includes('Broker')) {
+                    document.getElementById('btnCabinetBroker').classList.remove('hidden');
+                }
+                
+                if (isAdmin || roles.includes('Head')) {
+                    document.getElementById('btnCabinetHead').classList.remove('hidden');
+                }
+
+                if (isAdmin || roles.includes('HR')) {
+                    document.getElementById('btnCabinetHR').classList.remove('hidden');
+                }
+
+                // Если всё отлично — открываем Главное Меню
+                openScreen('mainMenuScreen');
+
+            } catch (error) {
+                console.error("Auth error:", error);
+                tg.showAlert("Ошибка связи с сервером авторизации.");
+            }
+        }
+
+        // 2. ФУНКЦИЯ НАВИГАЦИИ МЕЖДУ ЭКРАНАМИ
+        function showScreen(screenId) {
+            document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+            currentScreenId = screenId;
+        }
+
+        function openScreen(screenId) {
+            showScreen(screenId);
+
+            // Настраиваем кнопку "Назад" в Telegram
+            tg.BackButton.offClick(goBack);
+
+            if (screenId === 'mainMenuScreen') {
+                tg.BackButton.hide();
+                tg.MainButton.hide();
+            } else {
+                tg.BackButton.show();
+                tg.BackButton.onClick(goBack);
+                
+                // Если зашли в кабинет брокера - можем сымитировать загрузку лидов
+                if (screenId === 'brokerCabinetScreen') {
+                    loadBrokerLeads();
+                }
+            }
+        }
+
+        function goBack() { 
+            openScreen('mainMenuScreen'); 
+        }
+
+        // Заглушка для функции загрузки лидов брокера (сделаем на следующем шаге)
+        function loadBrokerLeads() {
+            const list = document.getElementById('brokerLeadsList');
+            // Здесь позже будет fetch-запрос в n8n за сделками из Broker_Leads
+            setTimeout(() => {
+                list.innerHTML = `
+                    <div class="lead-card">
+                        <h4>Иван Иванов</h4>
+                        <p>ОАЭ • Бюджет: $250,000</p>
+                        <p style="color: #bba589; margin-top: 5px;">Новый лид</p>
+                    </div>
+                    <div class="lead-card">
+                        <h4>Анна Смирнова</h4>
+                        <p>Бали • Бюджет: $150,000</p>
+                        <p style="color: green; margin-top: 5px;">В работе</p>
+                    </div>
+                `;
+            }, 800);
+        }
+
+        // Запускаем приложение
+        init();
+    </script>
+</body>
+</html>
