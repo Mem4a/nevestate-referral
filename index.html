@@ -34,7 +34,7 @@
             align-items: center;
             box-sizing: border-box;
             animation: fadeIn 0.3s ease-in-out;
-            padding-bottom: 100px;
+            padding-bottom: 100px; /* Отступ для Главной кнопки ТГ */
         }
 
         /* --- ЭКРАН ЗАГРУЗКИ & ДОСТУП ЗАПРЕЩЕН --- */
@@ -75,22 +75,20 @@
         h3.screen-title { font-family: 'Georgia', serif; text-align: center; margin-bottom: 25px; font-size: 22px; color: #000; }
         
         /* Стили формы */
-        .form-label { margin-left: 15px; margin-bottom: 5px; font-size: 13px; color: #999; display: block; margin-top: 15px;}
+        .form-label { margin-left: 15px; margin-bottom: 5px; font-size: 13px; color: #999; display: block; margin-top: 15px; font-weight: bold;}
+        .form-hint { margin-left: 15px; margin-bottom: 5px; font-size: 11px; color: #bbb; display: block; margin-top: -3px;}
+        
         .my-container input, .my-container select, .my-container textarea {
             width: 100%; padding: 15px 25px; border-radius: 30px; border: none; 
             background-color: var(--input-bg); color: #333; font-size: 16px; 
             box-sizing: border-box; margin-bottom: 5px; outline: none; appearance: none;
         }
         .my-container select { background-image: url('data:image/svg+xml;utf8,<svg fill="gray" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position-x: 95%; background-position-y: center; }
-        .my-container textarea { border-radius: 20px; min-height: 100px; resize: vertical; }
+        .my-container textarea { border-radius: 20px; min-height: 80px; resize: vertical; }
         .my-container input:focus, .my-container select:focus, .my-container textarea:focus { box-shadow: 0 0 0 2px var(--primary-gold); background-color: #fff; }
 
-        .lead-card {
-            background: #fff; border: 1px solid #ddd; border-radius: 15px; padding: 15px; margin-bottom: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .lead-card h4 { margin: 0 0 5px 0; font-size: 16px; }
-        .lead-card p { margin: 0; font-size: 13px; color: #666; }
+        /* Фиксы для input type date на iOS */
+        input[type="date"] { min-height: 48px; font-family: inherit; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -119,10 +117,10 @@
         <button class="menu-btn btn-primary" onclick="openScreen('referralFormScreen')">
             + Передать лид
         </button>
-        <button class="menu-btn btn-secondary" onclick="tg.showAlert('Раздел в разработке')">
+        <button class="menu-btn btn-secondary" onclick="openScreen('onboardingFormScreen')">
             🚀 Заявка на онбординг
         </button>
-        <button class="menu-btn btn-secondary" onclick="tg.showAlert('Раздел в разработке')">
+        <button class="menu-btn btn-secondary" onclick="openScreen('recruitmentFormScreen')">
             👤 Заявка на подбор
         </button>
 
@@ -137,29 +135,6 @@
         <button id="btnCabinetHR" class="menu-btn btn-cabinet hidden" onclick="openScreen('hrCabinetScreen')">
             ⚙️ Кабинет HR
         </button>
-    </div>
-
-    <div id="brokerCabinetScreen" class="app-screen hidden">
-        <div class="my-container">
-            <h3 class="screen-title">Мои лиды</h3>
-            <div id="brokerLeadsList">
-                <p style="text-align: center; color: #999; margin-top: 50px;">Загрузка лидов...</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="headCabinetScreen" class="app-screen hidden">
-        <div class="my-container">
-            <h3 class="screen-title">Сводка по отделу</h3>
-            <p style="text-align: center; color: #999; margin-top: 50px;">Здесь будет статистика и лиды ваших брокеров.</p>
-        </div>
-    </div>
-
-    <div id="hrCabinetScreen" class="app-screen hidden">
-        <div class="my-container">
-            <h3 class="screen-title">Управление командой</h3>
-            <p style="text-align: center; color: #999; margin-top: 50px;">Здесь будут заявки на онбординг и вакансии.</p>
-        </div>
     </div>
 
     <div id="referralFormScreen" class="app-screen hidden">
@@ -187,6 +162,130 @@
         </div>
     </div>
 
+    <div id="recruitmentFormScreen" class="app-screen hidden">
+        <div class="my-container">
+            <h3 class="screen-title">Заявка на подбор</h3>
+            
+            <label class="form-label">1. Название вакансии *</label>
+            <input type="text" id="recTitle" placeholder="Например: Брокер по недвижимости">
+
+            <label class="form-label">2. Подразделение / Отдел *</label>
+            <input type="text" id="recDept" placeholder="Например: Отдел продаж Бали">
+
+            <label class="form-label">3. Непосредственный руководитель *</label>
+            <input type="text" id="recManager" placeholder="ФИО руководителя">
+
+            <label class="form-label">4. Причины открытия вакансии *</label>
+            <span class="form-hint">Новая ставка, замена ушедшего (с указанием причины) или расширение штата.</span>
+            <textarea id="recReason" placeholder="Опишите причину..."></textarea>
+
+            <label class="form-label">5. Желаемая дата закрытия *</label>
+            <input type="date" id="recDate">
+
+            <label class="form-label">6. Формат работы *</label>
+            <select id="recWorkFormat">
+                <option value="" disabled selected>Выберите формат</option>
+                <option value="Офис">Офис (укажите адрес в комментариях)</option>
+                <option value="Удаленная работа">Удалённая работа</option>
+                <option value="Гибрид">Гибрид</option>
+            </select>
+
+            <label class="form-label">7. Командировки</label>
+            <input type="text" id="recTrips" placeholder="Есть/нет, как часто">
+
+            <label class="form-label">8. Формат занятости *</label>
+            <select id="recEmploymentType">
+                <option value="" disabled selected>Выберите занятость</option>
+                <option value="Постоянная, полный день">Постоянная работа, полный день</option>
+                <option value="Временный контракт">Временный контракт</option>
+                <option value="Проектная занятость">Проектная занятость</option>
+                <option value="Частичная занятость">Частичная занятость</option>
+            </select>
+
+            <label class="form-label">9. Уровень зарплаты</label>
+            <span class="form-hint">Фикс, KPI, сколько составляют</span>
+            <textarea id="recSalary" placeholder="Опишите условия оплаты..."></textarea>
+
+            <label class="form-label">10. Обязанности кандидата</label>
+            <textarea id="recDuties" placeholder="Чем предстоит заниматься..."></textarea>
+
+            <label class="form-label">11. Требования к кандидату</label>
+            <textarea id="recRequirements" placeholder="Опыт, навыки, языки..."></textarea>
+
+            <label class="form-label">12. Дополнительные комментарии</label>
+            <textarea id="recComments" placeholder="Любая полезная информация..."></textarea>
+        </div>
+    </div>
+
+    <div id="onboardingFormScreen" class="app-screen hidden">
+        <div class="my-container">
+            <h3 class="screen-title">Заявка на онбординг</h3>
+            
+            <label class="form-label">1. ФИО сотрудника *</label>
+            <span class="form-hint">На русском и ФИ на английском</span>
+            <input type="text" id="onbName" placeholder="Иванов Иван / Ivan Ivanov">
+
+            <label class="form-label">2. Должность и отдел *</label>
+            <input type="text" id="onbPosition" placeholder="Например: Брокер, Отдел ОАЭ">
+
+            <label class="form-label">3. Страна проживания *</label>
+            <input type="text" id="onbCountry" placeholder="Где физически находится сотрудник">
+
+            <label class="form-label">4. Дата начала работы *</label>
+            <input type="date" id="onbDate">
+
+            <label class="form-label">5. Контактные данные *</label>
+            <span class="form-hint">Email, Телефон, юзернейм в Telegram</span>
+            <textarea id="onbContacts" placeholder="Email: ...&#10;Тел: ...&#10;TG: @..."></textarea>
+
+            <label class="form-label">6. Место работы *</label>
+            <select id="onbWorkFormat">
+                <option value="" disabled selected>Выберите формат</option>
+                <option value="Офис">Офис</option>
+                <option value="Удаленная работа">Удалённый формат</option>
+                <option value="Гибрид">Гибрид</option>
+            </select>
+
+            <label class="form-label">7. Требуется ли рабочая почта?</label>
+            <select id="onbEmailNeed">
+                <option value="Да">Да, нужна</option>
+                <option value="Нет">Нет, не нужна</option>
+            </select>
+
+            <label class="form-label">8. Корпоративная сим-карта</label>
+            <select id="onbSimNeed">
+                <option value="Не нужна">Не нужна</option>
+                <option value="Нужна физическая">Нужна физическая сим-карта</option>
+                <option value="Нужна e-sim (телефон поддерживает)">Нужна e-sim (телефон поддерживает)</option>
+            </select>
+
+            <label class="form-label">9. Нужно ли оборудование?</label>
+            <span class="form-hint">Телефон, ноутбук и т.д.</span>
+            <input type="text" id="onbEquipment" placeholder="Если да, то какое?">
+
+            <label class="form-label">10. Офисному: дополнительные нужды</label>
+            <span class="form-hint">Канцелярия, мебель и т.д.</span>
+            <input type="text" id="onbOfficeItems" placeholder="Что нужно подготовить?">
+
+            <label class="form-label">11. Доступ к Google Диску</label>
+            <textarea id="onbGoogleDrive" placeholder="К каким папкам/ресурсам нужен доступ?"></textarea>
+
+            <label class="form-label">12. Группы WhatsApp</label>
+            <textarea id="onbWhatsApp" placeholder="В какие группы добавить?"></textarea>
+
+            <label class="form-label">13. Другие сервисы и доступы</label>
+            <span class="form-hint">AmoCRM, Supabase, n8n и т.д.</span>
+            <textarea id="onbOtherServices" placeholder="Укажите сервисы..."></textarea>
+
+            <label class="form-label">14. Дополнительные комментарии</label>
+            <textarea id="onbComments" placeholder="Любые пожелания..."></textarea>
+        </div>
+    </div>
+
+    <div id="brokerCabinetScreen" class="app-screen hidden"><div class="my-container"><h3 class="screen-title">Мои лиды</h3><div id="brokerLeadsList"><p style="text-align: center; color: #999; margin-top: 50px;">Загрузка лидов...</p></div></div></div>
+    <div id="headCabinetScreen" class="app-screen hidden"><div class="my-container"><h3 class="screen-title">Сводка по отделу</h3><p style="text-align: center; color: #999; margin-top: 50px;">В разработке</p></div></div>
+    <div id="hrCabinetScreen" class="app-screen hidden"><div class="my-container"><h3 class="screen-title">Управление командой</h3><p style="text-align: center; color: #999; margin-top: 50px;">В разработке</p></div></div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -195,25 +294,27 @@
 
         // --- URL ВЕБХУКОВ ---
         const AUTH_URL = 'https://n8n.nevn8n8amocrm.online/webhook/b0607fcb-775f-466e-8f2d-cc3b81fb632e'; 
-        // Вебхук для получения списка брокеров (из твоего первого сообщения)
         const GET_BROKERS_URL = 'https://n8n.nevn8n8amocrm.online/webhook/72ab1905-055c-4452-ae15-16245b46693e';
-        // Вебхук куда отправляется форма лида (из твоего первого сообщения)
         const POST_REFERRAL_URL = 'https://n8n.nevn8n8amocrm.online/webhook/f2cd4077-afb6-428e-adc0-4357783010a7';
+        
+        // ВНИМАНИЕ: Создай отдельный вебхук в n8n для приема HR-заявок (подбор и онбординг) и вставь сюда!
+        // Пока я использую заглушку-дубль, чтобы код не выдавал ошибку.
+        const POST_HR_FORMS_URL = 'https://n8n.nevn8n8amocrm.online/webhook/YOUR-NEW-HR-WEBHOOK-ID';
         
         let currentUser = null; 
         let currentScreenId = 'loaderScreen';
         let allBrokers = [];
         let allCountries = [];
 
-        // 1. ГЛАВНАЯ ФУНКЦИЯ
+        // ИНИЦИАЛИЗАЦИЯ
         async function init() {
             const tgId = tg.initDataUnsafe.user?.id;
-            // Для тестов: const tgId = 1211686949; 
+            // Для тестов на ПК раскомментируй строку ниже и впиши свой tg_id:
+            // const tgId = 1211686949; 
 
             if (!tgId) { showScreen('accessDeniedScreen'); return; }
 
             try {
-                // АВТОРИЗАЦИЯ
                 const authRes = await fetch(AUTH_URL, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
@@ -235,7 +336,6 @@
                 if (isAdmin || roles.includes('Head')) document.getElementById('btnCabinetHead').classList.remove('hidden');
                 if (isAdmin || roles.includes('HR')) document.getElementById('btnCabinetHR').classList.remove('hidden');
 
-                // ЗАГРУЗКА СПРАВОЧНИКОВ БРОКЕРОВ
                 document.getElementById('loaderText').innerText = 'Загрузка справочников...';
                 await loadDictionaries();
 
@@ -247,7 +347,7 @@
             }
         }
 
-        // 2. ЗАГРУЗКА БРОКЕРОВ И СТРАН
+        // ЗАГРУЗКА СПРАВОЧНИКОВ
         async function loadDictionaries() {
             try {
                 const res = await fetch(GET_BROKERS_URL, { method: 'GET' });
@@ -256,7 +356,6 @@
                     allBrokers = data.brokers; 
                     allCountries = data.countries;
                     
-                    // Заполняем селект стран
                     const cSelect = document.getElementById('refCountry');
                     cSelect.innerHTML = '<option value="" disabled selected>Выберите страну</option>';
                     allCountries.forEach(c => cSelect.innerHTML += `<option value="${c}">${c}</option>`);
@@ -266,72 +365,112 @@
             }
         }
 
-        // Фильтрация брокеров при выборе страны
         function filterBrokers() {
             const selectedCountry = document.getElementById('refCountry').value;
             const bSelect = document.getElementById('refBroker');
-            
             bSelect.innerHTML = '<option value="" disabled selected>Выберите брокера</option>';
-            
-            // Находим брокеров, у которых в массиве countries есть выбранная страна
             const filtered = selectedCountry ? allBrokers.filter(b => b.countries.includes(selectedCountry)) : allBrokers;
-            
             filtered.forEach(b => {
                 bSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
             });
         }
 
-        // 3. ОТПРАВКА ФОРМЫ
+        // ОТПРАВКА: ПЕРЕДАЧА ЛИДА
         async function submitReferral() {
-            const country = document.getElementById('refCountry').value;
-            const brokerId = document.getElementById('refBroker').value;
-            const clientName = document.getElementById('refClientName').value;
-            const clientPhone = document.getElementById('refClientPhone').value;
-            const comment = document.getElementById('refComment').value;
-            
-            if (!country || !brokerId || !clientName || !clientPhone) { 
-                tg.showAlert("Пожалуйста, заполните Страну, Брокера, Имя и Телефон клиента!"); 
-                return; 
-            }
-
-            tg.MainButton.showProgress();
-
             const payload = {
                 type: 'lead_referral',
-                // Кто передает
                 sender_name: currentUser.name || tg.initDataUnsafe.user?.first_name,
                 sender_tg_id: tg.initDataUnsafe.user?.id,
                 sender_amo_id: currentUser.amo_id,
-                // Кому передает (кому упадет лид)
-                target_broker_id: brokerId,
-                target_country: country,
-                // Данные клиента
-                client_name: clientName,
-                client_phone: clientPhone,
-                comment: comment
+                target_broker_id: document.getElementById('refBroker').value,
+                target_country: document.getElementById('refCountry').value,
+                client_name: document.getElementById('refClientName').value,
+                client_phone: document.getElementById('refClientPhone').value,
+                comment: document.getElementById('refComment').value
             };
 
+            if (!payload.target_country || !payload.target_broker_id || !payload.client_name || !payload.client_phone) { 
+                tg.showAlert("Пожалуйста, заполните Страну, Брокера, Имя и Телефон клиента!"); return; 
+            }
+
+            sendDataToWebhook(POST_REFERRAL_URL, payload, "✅ Лид успешно передан брокеру!");
+        }
+
+        // ОТПРАВКА: ЗАЯВКА НА ПОДБОР
+        async function submitRecruitment() {
+            const payload = {
+                type: 'hr_recruitment',
+                sender_name: currentUser.name,
+                sender_tg_id: tg.initDataUnsafe.user?.id,
+                job_title: document.getElementById('recTitle').value,
+                department: document.getElementById('recDept').value,
+                manager: document.getElementById('recManager').value,
+                reason: document.getElementById('recReason').value,
+                closing_date: document.getElementById('recDate').value,
+                work_format: document.getElementById('recWorkFormat').value,
+                trips: document.getElementById('recTrips').value,
+                employment_type: document.getElementById('recEmploymentType').value,
+                salary: document.getElementById('recSalary').value,
+                duties: document.getElementById('recDuties').value,
+                requirements: document.getElementById('recRequirements').value,
+                comments: document.getElementById('recComments').value
+            };
+
+            if (!payload.job_title || !payload.department || !payload.manager || !payload.reason || !payload.closing_date || !payload.work_format || !payload.employment_type) { 
+                tg.showAlert("Пожалуйста, заполните все обязательные поля (отмечены *)"); return; 
+            }
+
+            sendDataToWebhook(POST_HR_FORMS_URL, payload, "✅ Заявка на подбор успешно отправлена HR!");
+        }
+
+        // ОТПРАВКА: ЗАЯВКА НА ОНБОРДИНГ
+        async function submitOnboarding() {
+            const payload = {
+                type: 'hr_onboarding',
+                sender_name: currentUser.name,
+                sender_tg_id: tg.initDataUnsafe.user?.id,
+                employee_name: document.getElementById('onbName').value,
+                position_dept: document.getElementById('onbPosition').value,
+                country: document.getElementById('onbCountry').value,
+                start_date: document.getElementById('onbDate').value,
+                contacts: document.getElementById('onbContacts').value,
+                work_format: document.getElementById('onbWorkFormat').value,
+                need_email: document.getElementById('onbEmailNeed').value,
+                need_sim: document.getElementById('onbSimNeed').value,
+                equipment: document.getElementById('onbEquipment').value,
+                office_items: document.getElementById('onbOfficeItems').value,
+                google_drive: document.getElementById('onbGoogleDrive').value,
+                whatsapp_groups: document.getElementById('onbWhatsApp').value,
+                other_services: document.getElementById('onbOtherServices').value,
+                comments: document.getElementById('onbComments').value
+            };
+
+            if (!payload.employee_name || !payload.position_dept || !payload.country || !payload.start_date || !payload.contacts || !payload.work_format) { 
+                tg.showAlert("Пожалуйста, заполните все обязательные поля (отмечены *)"); return; 
+            }
+
+            sendDataToWebhook(POST_HR_FORMS_URL, payload, "✅ Заявка на онбординг успешно отправлена HR!");
+        }
+
+        // ОБЩАЯ ФУНКЦИЯ ОТПРАВКИ
+        async function sendDataToWebhook(url, payload, successMessage) {
+            tg.MainButton.showProgress();
             try {
-                const res = await fetch(POST_REFERRAL_URL, { 
+                const res = await fetch(url, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify(payload) 
                 });
                 
                 tg.MainButton.hideProgress();
-                
                 if (res.ok) { 
-                    tg.showAlert("✅ Лид успешно передан брокеру!"); 
-                    // Очищаем форму
-                    document.getElementById('refCountry').value = '';
-                    document.getElementById('refBroker').innerHTML = '<option value="" disabled selected>Сначала выберите страну</option>';
-                    document.getElementById('refClientName').value = '';
-                    document.getElementById('refClientPhone').value = '';
-                    document.getElementById('refComment').value = '';
-                    // Возвращаемся в меню
+                    tg.showAlert(successMessage); 
+                    // Очищаем инпуты на текущем экране
+                    document.querySelectorAll(`#${currentScreenId} input, #${currentScreenId} textarea`).forEach(el => el.value = '');
+                    document.querySelectorAll(`#${currentScreenId} select`).forEach(el => el.selectedIndex = 0);
                     openScreen('mainMenuScreen'); 
                 } else { 
-                    tg.showAlert("Ошибка сохранения лида."); 
+                    tg.showAlert("Ошибка сохранения. Проверьте настройки n8n."); 
                 }
             } catch (error) {
                 tg.MainButton.hideProgress();
@@ -339,7 +478,7 @@
             }
         }
 
-        // 4. НАВИГАЦИЯ
+        // НАВИГАЦИЯ
         function showScreen(screenId) {
             document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
             document.getElementById(screenId).classList.remove('hidden');
@@ -349,7 +488,9 @@
         function openScreen(screenId) {
             showScreen(screenId);
             tg.BackButton.offClick(goBack);
-            tg.MainButton.offClick(submitReferral); // Очищаем клик
+            tg.MainButton.offClick(submitReferral);
+            tg.MainButton.offClick(submitRecruitment);
+            tg.MainButton.offClick(submitOnboarding);
 
             if (screenId === 'mainMenuScreen') {
                 tg.BackButton.hide();
@@ -358,36 +499,31 @@
                 tg.BackButton.show();
                 tg.BackButton.onClick(goBack);
                 
-                // Если открыли форму - настраиваем Главную Кнопку ТГ
+                // Настройка Главной Кнопки в зависимости от открытой формы
                 if (screenId === 'referralFormScreen') {
                     tg.MainButton.setText("ОТПРАВИТЬ ЛИД");
                     tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' });
                     tg.MainButton.onClick(submitReferral);
                     tg.MainButton.show();
-                }
-
-                if (screenId === 'brokerCabinetScreen') {
-                    loadBrokerLeads();
+                } else if (screenId === 'recruitmentFormScreen') {
+                    tg.MainButton.setText("ОТПРАВИТЬ ЗАЯВКУ НА ПОДБОР");
+                    tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' });
+                    tg.MainButton.onClick(submitRecruitment);
+                    tg.MainButton.show();
+                } else if (screenId === 'onboardingFormScreen') {
+                    tg.MainButton.setText("ОТПРАВИТЬ ЗАЯВКУ НА ОНБОРДИНГ");
+                    tg.MainButton.setParams({ color: '#bba589', text_color: '#ffffff' });
+                    tg.MainButton.onClick(submitOnboarding);
+                    tg.MainButton.show();
                 }
             }
         }
 
         function goBack() { openScreen('mainMenuScreen'); }
 
-        function loadBrokerLeads() {
-            const list = document.getElementById('brokerLeadsList');
-            setTimeout(() => {
-                list.innerHTML = `
-                    <div class="lead-card">
-                        <h4>Иван Иванов</h4>
-                        <p>ОАЭ • Бюджет: $250,000</p>
-                        <p style="color: #bba589; margin-top: 5px;">Новый лид</p>
-                    </div>
-                `;
-            }, 800);
-        }
-
         init();
     </script>
+</body>
+</html>
 </body>
 </html>
